@@ -2,11 +2,14 @@ package network.b.bnet;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.support.v4.view.ViewPager;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -17,8 +20,14 @@ import com.facebook.drawee.backends.pipeline.Fresco;
 import java.util.ArrayList;
 import java.util.List;
 
+import network.b.bnet.base.BNetApplication;
 import network.b.bnet.base.BaseActivity;
+import network.b.bnet.protect.OnePixelReceiver;
 import network.b.bnet.service.BnetAidlInterface;
+import network.b.bnet.service.BnetService;
+import network.b.bnet.service.LocalVPNService;
+import network.b.bnet.service.LogService;
+import network.b.bnet.utils.Utils;
 import network.b.bnet.utils.parts.MainPagerAdapter;
 
 public class MainActivity extends BaseActivity implements View.OnClickListener, ViewPager.OnPageChangeListener {
@@ -46,6 +55,7 @@ public class MainActivity extends BaseActivity implements View.OnClickListener, 
     private MainActivity_LinkView mainActivity_linkView;
     private MainActivity_MyView mainActivity_myView;
     private MainActivity_Presenter mainActivity_presenter;
+    private OnePixelReceiver mOnepxReceiver;
 
 
     private static final int VPN_REQUEST_CODE = 0x0F;
@@ -55,6 +65,8 @@ public class MainActivity extends BaseActivity implements View.OnClickListener, 
         Fresco.initialize(this);
         setContentView(R.layout.activity_main);
         super.onCreate(savedInstanceState);
+        Intent intent = new Intent(getApplicationContext(), LogService.class);
+        startService(intent);
     }
 
     @Override
@@ -67,7 +79,6 @@ public class MainActivity extends BaseActivity implements View.OnClickListener, 
 
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
-
             }
         };
 
@@ -78,8 +89,17 @@ public class MainActivity extends BaseActivity implements View.OnClickListener, 
         selectPageIndex(0);
         viewPager.addOnPageChangeListener(this);
         mainActivity_presenter = new MainActivity_Presenter(mainActivity_linkView, mainActivity_myView, this);
+        onepxRecevier();
     }
 
+    protected void onepxRecevier() {
+        mOnepxReceiver = new OnePixelReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("android.intent.action.SCREEN_OFF");
+        intentFilter.addAction("android.intent.action.SCREEN_ON");
+        intentFilter.addAction("android.intent.action.USER_PRESENT");
+        registerReceiver(mOnepxReceiver, intentFilter);
+    }
     @Override
     protected void initView() {
         this.ll_home = (LinearLayout) findViewById(R.id.ll_home);
@@ -170,8 +190,16 @@ public class MainActivity extends BaseActivity implements View.OnClickListener, 
 
     @Override
     protected void onResume() {
-
         super.onResume();
+        if (BNetApplication.isChecked && !Utils.isServiceRunning(getApplicationContext(),LocalVPNService.class.getName())) {
+            mainActivity_linkView.main_net_status_switch.setChecked(false);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
     }
 
     public void startVPN() {

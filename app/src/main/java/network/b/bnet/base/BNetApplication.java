@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import network.b.bnet.model.BnetServiceJoinParams;
 import network.b.bnet.model.User;
@@ -19,7 +20,7 @@ import network.b.bnet.service.BnetService;
 
 public class BNetApplication extends Application {
     private Context context;
-
+    private static final String TAG = "BNetApplication";
     public User getUser() {
         return user;
     }
@@ -31,9 +32,9 @@ public class BNetApplication extends Application {
     private User user;
     private static BNetApplication bNetApplication = null;
 
-
+    public static boolean isChecked = false;
     private static ServiceConnection serviceConnection;
-    private boolean serviceBind = false;
+    public static boolean serviceBind = false;
 
     public BnetAidlInterface getBnetAidlInterface() {
         return bnetAidlInterface;
@@ -55,16 +56,17 @@ public class BNetApplication extends Application {
     public static BNetApplication getInstance() {
         return bNetApplication;
     }
-
     public Context getContext() {
         return context;
     }
 
     public void DestoryBnetService() {
-//        if (serviceConnection != null && serviceBind) {
-//            unbindService(serviceConnection);
-//            serviceBind = false;
-//        }
+        isChecked = false;
+        if (serviceConnection != null && serviceBind) {
+            Log.d(TAG, "DestoryBnetService:   unbindsercice ");
+            unbindService(serviceConnection);
+            serviceBind = false;
+        }
         if (bnetAidlInterface != null) {
             try {
                 bnetAidlInterface.leave();
@@ -84,14 +86,15 @@ public class BNetApplication extends Application {
         serviceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                Log.d(TAG, "onServiceConnected:..... ");
                 bnetAidlInterface = BnetAidlInterface.Stub.asInterface(iBinder);
+                isChecked = true;
                 serviceBind = true;
                 StartBnetServiceJoin();
             }
 
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
-
             }
         };
         mIntentConnectorService = new Intent(getApplicationContext(), BnetService.class);
@@ -127,5 +130,4 @@ public class BNetApplication extends Application {
             }
         }
     }
-
 }
